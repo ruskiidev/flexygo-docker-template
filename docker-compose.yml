@@ -1,0 +1,65 @@
+services:
+  flx-frontend:
+    image: flexygo/flexygo-frontend
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+    ports:
+      - "${FRONTEND_PORT}:8080"
+    volumes:
+      - flx-front-conf:/app/conf
+      - flx-front-custom:/app/custom
+    networks:
+      - flx-front-network
+    depends_on:
+      - flx-backend
+
+  flx-backend:
+    image: flexygo/flexygo-backend
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: "Development"
+      MSSQL_SA_PASSWORD: "${SQL_PASSWORD}"
+      ADMIN_PASSWORD : "admin123"
+    ports:
+      - "60952:8080"
+    volumes:
+      - flx-back-conf:/app/conf
+      - flx-back-custom:/app/custom
+    networks:
+      - flx-front-network
+      - flx-back-network
+    depends_on:
+      flx-db:
+        condition: service_healthy
+
+  flx-db:
+    image: flexygo/flexygo-db
+    restart: unless-stopped
+    ports:
+      - "14333:1433" 
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SQL_PASSWORD}"
+      MSSQL_PID: "Evaluation"
+    networks:
+      - flx-back-network
+    volumes:
+      - flx-db-data:/var/opt/mssql/data/
+      - flx-db-log:/var/opt/mssql/log/
+      - flx-db-secrets:/var/opt/mssql/secrets/
+
+networks:
+  flx-front-network:
+    driver: bridge
+  flx-back-network:
+    driver: bridge
+
+volumes:
+    flx-front-conf:
+    flx-front-custom:
+    flx-back-conf:
+    flx-back-custom:
+    flx-db-data:
+    flx-db-log:
+    flx-db-secrets:
