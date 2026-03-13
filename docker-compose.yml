@@ -20,7 +20,7 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: "Development"
       MSSQL_SA_PASSWORD: "${SQL_PASSWORD}"
-      ADMIN_PASSWORD : "admin123"
+      ADMIN_PASSWORD: "admin123"
     ports:
       - "60952:8080"
     volumes:
@@ -37,7 +37,7 @@ services:
     image: flexygo/flexygo-db
     restart: unless-stopped
     ports:
-      - "14333:1433" 
+      - "14333:1433"
     environment:
       ACCEPT_EULA: "Y"
       MSSQL_SA_PASSWORD: "${SQL_PASSWORD}"
@@ -49,6 +49,71 @@ services:
       - flx-db-log:/var/opt/mssql/log/
       - flx-db-secrets:/var/opt/mssql/secrets/
 
+  filebrowser:
+    image: filebrowser/filebrowser:latest
+    user: "1000:1000"
+    ports:
+      - "3000:80"
+    volumes:
+      - flx-front-conf:/srv/conf-frontend
+      - flx-front-custom:/srv/custom-frontend
+      - flx-back-conf:/srv/conf-backend
+      - flx-back-custom:/srv/custom-backend
+      - filebrowser-database:/database
+      - filebrowser-config:/config
+    environment:
+      FB_DATABASE: /database/filebrowser.db
+      FB_CONFIG: /config/settings.json
+      FB_ROOT: /srv
+      FB_LOG: stdout
+    networks:
+      - flx-back-network
+      - flx-front-network
+    depends_on:
+      flx-filebrowser-init:
+        condition: service_completed_successfully
+
+  # ── Servicio init: ajusta permisos y termina ──────────────
+  flx-filebrowser-init:
+    image: alpine:latest
+    user: root
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        mkdir -p \
+          /srv/conf-frontend \
+          /srv/custom-frontend \
+          /srv/conf-backend \
+          /srv/custom-backend \
+          /database \
+          /config
+        chown -R 1000:1000 \
+          /srv/conf-frontend \
+          /srv/custom-frontend \
+          /srv/conf-backend \
+          /srv/custom-backend \
+          /database \
+          /config
+        chmod -R 775 \
+          /srv/conf-frontend \
+          /srv/custom-frontend \
+          /srv/conf-backend \
+          /srv/custom-backend \
+          /database \
+          /config
+        echo "Permisos aplicados correctamente."
+    volumes:
+      - flx-front-conf:/srv/conf-frontend
+      - flx-front-custom:/srv/custom-frontend
+      - flx-back-conf:/srv/conf-backend
+      - flx-back-custom:/srv/custom-backend
+      - filebrowser-database:/database
+      - filebrowser-config:/config
+    networks:
+      - flx-back-network
+      - flx-front-network
+
 networks:
   flx-front-network:
     driver: bridge
@@ -56,10 +121,12 @@ networks:
     driver: bridge
 
 volumes:
-    flx-front-conf:
-    flx-front-custom:
-    flx-back-conf:
-    flx-back-custom:
-    flx-db-data:
-    flx-db-log:
-    flx-db-secrets:
+  filebrowser-database:
+  filebrowser-config:
+  flx-front-conf:
+  flx-front-custom:
+  flx-back-conf:
+  flx-back-custom:
+  flx-db-data:
+  flx-db-log:
+  flx-db-secrets:
